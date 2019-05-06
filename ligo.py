@@ -75,3 +75,60 @@ number_of_mergers = 10
 m = create_m_pairs(number_of_mergers)
 for i in range(number_of_mergers):
     main(m[i][0], m[i][1])
+
+import pandas as pd
+
+iles = pd.read_csv('AllExercises/AllWithNoise.dat', sep=' ', header=None)
+data = pd.DataFrame(data=iles)
+header = ['time', 'h1', 'h2', 'h3']
+data.columns=header
+
+# Copied From CPP Version
+
+def f(x, m, tc):
+    return 16.6*np.power(m, -5./8, dtype=np.float64)*np.power(tc-x, -3/8., dtype=np.float64)
+
+
+def phi(x, m, tc):
+    return 2*np.pi*16.6*np.power(m, -5./8, dtype=np.float64)*(-3/8)*(np.power(tc-x, 5./8, dtype=np.float64))
+
+
+def h(x, amp, m, tc, phi_c):
+    if amp > 1:
+        raise NotImplementedError
+
+    r = np.abs(amp)*np.power(f(x,m,tc), 2./3., dtype=np.float64) * np.cos(phi(x,m,tc)+phi_c)
+
+    if x > tc:
+        r = 0
+
+    if np.abs(r) > 0.5:
+        r = 0.0
+
+    return r
+
+
+def filter_output(datastream, datatime, stddev, amp, m, tc, phi_c):
+    sn = 0
+    norm = 0
+    d = len(datastream)
+
+    for i in range(d):
+        signal = h(datatime[i], amp, m, tc, phi_c)
+        sn += np.power(datastream[i]*signal, 2, dtype=np.float64)
+        norm += np.power(signal/stddev, 2)
+
+    if stddev > 0.0:
+        sn = sn/norm
+
+    return sn
+
+
+standard_dev = 0.2
+
+print(data.dtypes)
+
+for t in range(5,1200):
+    print(filter_output(data['h1'], data['time'], standard_dev, 1.0,90.0,t,0) + " " + \
+          filter_output(data['h2'], data['time'], standard_dev, 0.8,31.0,t,0) + " " + \
+          filter_output(data['h1'], data['time'], standard_dev, 0.1,17.0,t,np.pi))
